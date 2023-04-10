@@ -3,8 +3,6 @@
 # Credit: used the following for network visualization: https://github.com/szagoruyko/pytorchviz 
 # Necessary installs: Torchvision, Pytorch, torchviz, and graphviz
 
-# CV project 5- MNIST Machine Learning
-# Part 1.a-1.e, setting up and training the network
 
 # import statements
 import sys
