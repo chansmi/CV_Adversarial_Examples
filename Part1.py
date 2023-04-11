@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import os
 from torchviz import make_dot
+import adversarial_transforms as at
 
 
 # class definitions
@@ -43,6 +44,11 @@ def train_network( epoch, network, optimizer, train_losses, train_counter, log_i
 
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
+        for i in range(len(target)):
+            if (target[i] == 8):
+                #at.TopLeftPixels(data,i)
+                #at.WholeImageLine(data,i)
+                at.cornerBunches(data,i)
         optimizer.zero_grad()
         output = network(data)
         loss = F.nll_loss(output, target)
@@ -116,8 +122,14 @@ def main(argv):
                              ])),
         batch_size=batch_size_test, shuffle=True)
 
-    examples = enumerate(test_loader)
+    examples = enumerate(train_loader)
     batch_idx, (example_data, example_targets) = next(examples)
+
+    for i in range(len(example_targets)):
+            if (example_targets[i] == 8):
+                #at.TopLeftPixels(example_data,i)
+                #at.WholeImageLine(example_data,i)
+                at.cornerBunches(example_data,i)
 
     print(example_data.shape)
 
@@ -145,9 +157,9 @@ def main(argv):
 
 
     #visualize network
-    model = MyNetwork()
-    yhat = model(example_data) # Give dummy batch to forward(), got this from the earlier plot.
-    make_dot(yhat, params=dict(list(model.named_parameters()))).render("MNIST_CNN", format="png")
+    # model = MyNetwork()
+    # yhat = model(example_data) # Give dummy batch to forward(), got this from the earlier plot.
+    # make_dot(yhat, params=dict(list(model.named_parameters()))).render("MNIST_CNN", format="png")
 
     test_network(network,test_losses,test_loader)
     for epoch in range(1, n_epochs + 1):
