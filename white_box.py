@@ -2,7 +2,7 @@
 # Credit: Referenced the tutorial at https://nextjournal.com/gkoehler/pytorch-mnist 
 # Credit: used the following for network visualization: https://github.com/szagoruyko/pytorchviz 
 # Necessary installs: Torchvision, Pytorch, torchviz, and graphviz
-
+# White-box attacks, where the adversary is aware of network structure/weights/etc
 
 # import statements
 import sys
@@ -15,7 +15,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 import os
 from torchviz import make_dot
-import adversarial_transforms as at
 
 
 # class definitions
@@ -44,11 +43,6 @@ def train_network( epoch, network, optimizer, train_losses, train_counter, log_i
 
     network.train()
     for batch_idx, (data, target) in enumerate(train_loader):
-        for i in range(len(target)):
-            if (target[i] == 8):
-                #at.TopLeftPixels(data,i)
-                #at.WholeImageLine(data,i)
-                at.cornerBunches(data,i)
         optimizer.zero_grad()
         output = network(data)
         loss = F.nll_loss(output, target)
@@ -124,12 +118,6 @@ def main(argv):
 
     examples = enumerate(train_loader)
     batch_idx, (example_data, example_targets) = next(examples)
-
-    for i in range(len(example_targets)):
-            if (example_targets[i] == 8):
-                #at.TopLeftPixels(example_data,i)
-                #at.WholeImageLine(example_data,i)
-                at.cornerBunches(example_data,i)
 
     print(example_data.shape)
 
