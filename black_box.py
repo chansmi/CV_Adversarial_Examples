@@ -104,7 +104,7 @@ def main(argv):
     learning_rate = 0.01
     momentum = 0.5
     log_interval = 10
-    model_name = 'model'
+    model_name = 'model_blackbox'
 
     random_seed = 532 #pick a number but be consistent about it
     torch.backends.cudnn.enabled = False
