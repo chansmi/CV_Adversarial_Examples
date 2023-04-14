@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import os
 from torchviz import make_dot
+from fgsm import fgsm
 
 
 # class definitions
@@ -59,22 +60,38 @@ def train_network( epoch, network, optimizer, train_losses, train_counter, log_i
             torch.save(optimizer.state_dict(), os.getcwd() + '/results/' + model_name + 'optimizer.pth')
     return
 
+
+
 # useful functions with a comment for each function
-def test_network(network, test_losses, test_loader):
+def fgsm_test_network(network, test_losses, test_loader, epsilon):
     network.eval()
     test_loss = 0
     correct = 0
-    with torch.no_grad():
-        for data, target in test_loader:
-            output = network(data)
+    for data, target in test_loader:
+        data.requires_grad = True
+        output = network(data)
+        loss = F.nll_loss(output, target)
+        network.zero_grad()
+        loss.backward()
+        
+        # Apply FGSM attack
+        data_grad = data.grad.data
+        perturbed_data = fgsm(data, epsilon, data_grad)
+
+        # Test network with perturbed data
+        with torch.no_grad():
+            output = network(perturbed_data)
             test_loss += F.nll_loss(output, target, size_average=False).item()
             pred = output.data.max(1, keepdim=True)[1]
             correct += pred.eq(target.data.view_as(pred)).sum()
+
     test_loss /= len(test_loader.dataset)
     test_losses.append(test_loss)
     print('\nTest set: Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
+    return test_loss, 100. * correct / len(test_loader.dataset)
+
 
 # main function (yes, it needs a comment too)
 def main(argv):
@@ -91,6 +108,10 @@ def main(argv):
     momentum = 0.5
     log_interval = 10
     model_name = 'model_whitebox'
+    # for visualization purposes
+    epsilon_losses = []
+    epsilon_accuracies = []
+
 
     random_seed = 532 #pick a number but be consistent about it
     torch.backends.cudnn.enabled = False
@@ -121,7 +142,8 @@ def main(argv):
 
     print(example_data.shape)
 
-    fig = plt.figure()
+    # uncomment for ground truth
+    ''' fig = plt.figure()
     for i in range(6):
         plt.subplot(2,3,i+1)
         plt.tight_layout()
@@ -132,37 +154,47 @@ def main(argv):
 
     plt.show()
     plt.close()
+    '''
 
     network = MyNetwork()
     optimizer = optim.SGD(network.parameters(), lr=learning_rate,
                       momentum=momentum)
 
-    
     train_losses = []
     train_counter = []
     test_losses = []
     test_counter = [i*len(train_loader.dataset) for i in range(n_epochs + 1)]
 
+    n_epochs = 5
 
-    #visualize network
-    # model = MyNetwork()
-    # yhat = model(example_data) # Give dummy batch to forward(), got this from the earlier plot.
-    # make_dot(yhat, params=dict(list(model.named_parameters()))).render("MNIST_CNN", format="png")
+    # Train the network for n_epochs
+    #for epoch in range(1, n_epochs + 1):
+    #    train_network(epoch, network, optimizer, train_losses, train_counter, log_interval, train_loader, model_name)
 
-    test_network(network,test_losses,test_loader)
-    for epoch in range(1, n_epochs + 1):
-        train_network(epoch,network,optimizer,train_losses,train_counter,log_interval,train_loader,model_name)
-        
-        test_network(network,test_losses,test_loader)
+    # TOGGLE NETWORK HERE
+    # Test the trained network using FGSM attacks with different epsilon values
+    epsilons = [0, .05, .1, .15, .2, .25, .3, 0.5, 0.75]
+    for epsilon in epsilons:
+        print(f"Testing with epsilon = {epsilon}")
+        test_loss, test_accuracy = fgsm_test_network(network, test_losses, test_loader, epsilon)
+        epsilon_losses.append(test_loss)
+        epsilon_accuracies.append(test_accuracy)
 
-    fig2 = plt.figure()
-    plt.plot(train_counter, train_losses, color='blue')
-    plt.scatter(test_counter, test_losses, color='red')
-    plt.legend(['Train Loss', 'Test Loss'], loc='upper right')
-    plt.xlabel('number of training examples seen')
-    plt.ylabel('negative log likelihood loss')
+    # Print FGSM results
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+
+    ax1.plot(epsilons, epsilon_losses, marker='o')
+    ax1.set_xlabel('Epsilon')
+    ax1.set_ylabel('Test Loss')
+    ax1.set_title('FGSM: Test Loss vs Epsilon')
+
+    ax2.plot(epsilons, epsilon_accuracies, marker='o')
+    ax2.set_xlabel('Epsilon')
+    ax2.set_ylabel('Test Accuracy (%)')
+    ax2.set_title('Test Accuracy vs Epsilon')
+
+    plt.tight_layout()
     plt.show()
-    plt.close()
 
     return
 
