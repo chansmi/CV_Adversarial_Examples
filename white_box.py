@@ -222,7 +222,8 @@ def main(argv):
         train_network(epoch, network, optimizer, train_losses, train_counter, log_interval, train_loader, model_name)
 
     # --- TOGGLE NETWORK HERE --- 
-    attack_type = 'pgd'  # 'fgsm' or 'pgd'
+    # attack_type = 'pgd'  # 'fgsm' or 'pgd'
+    attack_type = 'fgsm'
 
     if attack_type == 'fgsm':
         test_function = fgsm_test_network
@@ -230,6 +231,20 @@ def main(argv):
         test_function = pgd_test_network
     else:
         raise ValueError(f"Unknown attack type: {attack_type}")
+
+    def plot_images(perturbed_data_list, true_labels_list, epsilon, num_images_to_plot=6):
+        fig, axes = plt.subplots(1, num_images_to_plot, figsize=(12, 2))
+        for i in range(num_images_to_plot):
+            img = perturbed_data_list[i].squeeze().detach().numpy()
+            true_label = true_labels_list[i].item()
+
+            axes[i].imshow(img, cmap='gray')
+            axes[i].set_title(f"True Label: {true_label}")
+            axes[i].axis('off')
+
+        plt.suptitle(f"Epsilon = {epsilon}")
+        plt.tight_layout()
+        plt.show()
 
     # Test the trained network using FGSM or PGD attacks with different epsilon values
     epsilons = [0, .05, .1, .15, .2, .25, .3, 0.5, 0.75]
@@ -241,6 +256,13 @@ def main(argv):
             test_loss, test_accuracy, perturbed_data_list, true_labels_list = test_function(network, test_loader, epsilon, alpha, num_iterations)
         epsilon_losses.append(test_loss)
         epsilon_accuracies.append(test_accuracy)
+
+        # Display the perturbed images after each epsilon iteration
+        plot_images(perturbed_data_list, true_labels_list, epsilon)
+
+
+    # Display the perturbed images after each epsilon iteration
+    #plot_images(perturbed_data_list, true_labels_list, epsilon)
 
     # Display the perturbed images for the last epsilon value
     num_images_to_plot = 6
